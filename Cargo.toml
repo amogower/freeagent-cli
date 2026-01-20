@@ -1,0 +1,66 @@
+[package]
+name = "freeagent"
+version = "1.0.0"
+edition = "2021"
+authors = ["FreeAgent CLI"]
+description = "A comprehensive command-line interface for the FreeAgent accounting API"
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/example/freeagent-cli"
+keywords = ["freeagent", "accounting", "cli", "api", "invoices"]
+categories = ["command-line-utilities", "finance"]
+
+[dependencies]
+# CLI framework
+clap = { version = "4.4", features = ["derive", "env"] }
+
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# HTTP client
+reqwest = { version = "0.11", features = ["json", "rustls-tls"], default-features = false }
+
+# OAuth2
+oauth2 = "4.4"
+
+# JSON serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# URL handling
+url = "2.5"
+
+# Date/time
+chrono = { version = "0.4", features = ["serde"] }
+
+# Error handling
+anyhow = "1.0"
+thiserror = "1.0"
+
+# Local HTTP server for OAuth callback
+tiny_http = "0.12"
+
+# Open browser
+webbrowser = "0.8"
+
+# Secure token storage
+directories = "5.0"
+
+# Terminal colors and formatting
+colored = "2.1"
+comfy-table = "7.1"
+
+# UUID for state parameter
+uuid = { version = "1.6", features = ["v4"] }
+
+# Base64 encoding
+base64 = "0.21"
+
+# SHA256 for PKCE
+sha2 = "0.10"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+strip = true
