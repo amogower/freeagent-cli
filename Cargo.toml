@@ -6,7 +6,7 @@ authors = ["FreeAgent CLI"]
 description = "A comprehensive command-line interface for the FreeAgent accounting API"
 license = "MIT"
 readme = "README.md"
-repository = "https://github.com/example/freeagent-cli"
+repository = "https://github.com/amogower/freeagent-cli"
 keywords = ["freeagent", "accounting", "cli", "api", "invoices"]
 categories = ["command-line-utilities", "finance"]
 
@@ -64,3 +64,18 @@ opt-level = "z"
 lto = true
 codegen-units = 1
 strip = true
+
+[package.metadata.deb]
+maintainer = "FreeAgent CLI"
+section = "utils"
+priority = "optional"
+assets = [
+    ["target/release/freeagent", "usr/bin/", "755"],
+    ["README.md", "usr/share/doc/freeagent/README.md", "644"],
+]
+
+[package.metadata.generate-rpm]
+assets = [
+    { source = "target/release/freeagent", dest = "/usr/bin/freeagent", mode = "755" },
+    { source = "README.md", dest = "/usr/share/doc/freeagent/README.md", mode = "644" },
+]

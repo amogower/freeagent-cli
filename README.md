@@ -15,12 +15,56 @@ A comprehensive command-line interface for the FreeAgent accounting API, written
 
 ## Installation
 
+### Quick Install (macOS + Linux)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/amogower/freeagent-cli/main/scripts/install.sh | bash
+```
+
+Install a specific version:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/amogower/freeagent-cli/main/scripts/install.sh | bash -s -- 1.0.0
+```
+
+Use a fork or custom install directory:
+
+```bash
+FREEAGENT_GITHUB_REPO="yourname/freeagent-cli" INSTALL_DIR="$HOME/.local/bin" \
+  curl -fsSL https://raw.githubusercontent.com/amogower/freeagent-cli/main/scripts/install.sh | bash
+```
+
+### Homebrew (macOS + Linux)
+
+This project includes a Homebrew formula template at `packaging/homebrew/freeagent.rb`.
+To publish via Homebrew, create a tap repo and copy the formula there after each release.
+
+### Linux Packages (.deb / .rpm)
+
+Download the `.deb` or `.rpm` asset from the GitHub Releases page and install with:
+
+```bash
+sudo dpkg -i freeagent_1.0.0_amd64.deb
+```
+
+```bash
+sudo rpm -i freeagent-1.0.0-1.x86_64.rpm
+```
+
+### macOS Installer (.pkg)
+
+Download the `.pkg` asset from the GitHub Releases page and install with:
+
+```bash
+sudo installer -pkg freeagent-1.0.0-aarch64-apple-darwin.pkg -target /
+```
+
 ### From Source
 
 ```bash
 # Clone the repository
-git clone <repository-url>
-cd freeagent-cli-rust
+git clone https://github.com/amogower/freeagent-cli
+cd freeagent-cli
 
 # Build with your OAuth credentials
 FREEAGENT_CLIENT_ID="your_client_id" \
@@ -30,9 +74,30 @@ cargo build --release
 # The binary is at target/release/freeagent
 ```
 
-### Pre-built Binary
+### Cargo Install
 
-Download the pre-built binary for your platform from the releases page.
+```bash
+cargo install --git https://github.com/amogower/freeagent-cli
+```
+
+### Release Assets
+
+Each GitHub Release includes:
+- Platform tarballs (`freeagent-<version>-<target>.tar.gz`)
+- macOS `.pkg` installers
+- Linux `.deb` and `.rpm` packages
+
+## Release Process
+
+Releases are automated via GitHub Actions. Tag a release and push the tag:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+The workflow builds all targets, packages assets, generates `SHA256SUMS`, and produces
+`dist/freeagent.rb` for Homebrew (copy it into your tap repo).
 
 ## Configuration
 
