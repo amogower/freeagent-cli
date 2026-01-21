@@ -1,6 +1,6 @@
 [package]
 name = "freeagent"
-version = "0.1.1"
+version = "0.1.2"
 edition = "2021"
 authors = ["FreeAgent CLI"]
 description = "A comprehensive command-line interface for the FreeAgent accounting API"
