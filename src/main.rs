@@ -29,7 +29,9 @@ mod output;
 mod update;
 
 use anyhow::Result;
-use clap::{Parser, Subcommand};
+use clap::{CommandFactory, Parser, Subcommand};
+use clap_complete::{generate, Shell};
+use std::io::{self, Write};
 
 use api::FreeAgentClient;
 use commands::*;
@@ -75,6 +77,13 @@ enum Commands {
         /// Skip confirmation prompt
         #[arg(long)]
         yes: bool,
+    },
+
+    /// Generate shell completions
+    Completions {
+        /// Shell to generate completions for
+        #[arg(value_enum)]
+        shell: Shell,
     },
     
     /// Company management
@@ -258,6 +267,16 @@ enum Commands {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    if let Commands::Completions { shell } = &cli.command {
+        let mut cmd = Cli::command();
+        let stdout = io::stdout();
+        let mut writer = EpipeIgnore {
+            inner: stdout.lock(),
+        };
+        generate(*shell, &mut cmd, "freeagent", &mut writer);
+        return Ok(());
+    }
+
     if update::maybe_auto_update(cli.no_update).await? {
         return Ok(());
     }
@@ -277,6 +296,9 @@ async fn main() -> Result<()> {
         }
         Commands::Update { yes } => {
             update::run_update(yes).await?;
+        }
+        Commands::Completions { .. } => {
+            unreachable!("completions handled before update checks");
         }
         
         // All other commands need an authenticated client
@@ -328,6 +350,9 @@ async fn main() -> Result<()> {
                 Commands::SalesTaxPeriods(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::CapitalAssetTypes(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::CisBands(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::Completions { .. } => {
+                    unreachable!("completions handled before update checks");
+                }
                 // Already handled above
                 Commands::Login | Commands::Logout | Commands::Status | Commands::Update { .. } => {
                     unreachable!()
@@ -337,4 +362,26 @@ async fn main() -> Result<()> {
     }
 
     Ok(())
+}
+
+struct EpipeIgnore<W: Write> {
+    inner: W,
+}
+
+impl<W: Write> Write for EpipeIgnore<W> {
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        match self.inner.write(buf) {
+            Ok(count) => Ok(count),
+            Err(err) if err.kind() == io::ErrorKind::BrokenPipe => Ok(buf.len()),
+            Err(err) => Err(err),
+        }
+    }
+
+    fn flush(&mut self) -> io::Result<()> {
+        match self.inner.flush() {
+            Ok(()) => Ok(()),
+            Err(err) if err.kind() == io::ErrorKind::BrokenPipe => Ok(()),
+            Err(err) => Err(err),
+        }
+    }
 }

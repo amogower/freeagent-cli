@@ -118,6 +118,49 @@ Detailed command reference lives in `docs/` with one markdown file per top-level
 - Run `freeagent <command> --help` for quick usage
 - See `docs/<command>.md` for full subcommand and flag details
 
+## Shell Completions
+
+Generate completions for your shell. Choose the path that matches your OS and shell.
+
+### macOS (Intel)
+
+```bash
+# Bash
+sudo freeagent completions bash > /usr/local/etc/bash_completion.d/freeagent
+
+# Zsh
+sudo freeagent completions zsh > /usr/local/share/zsh/site-functions/_freeagent
+
+# Fish
+freeagent completions fish > ~/.config/fish/completions/freeagent.fish
+```
+
+### macOS (Apple Silicon)
+
+```bash
+# Bash
+sudo freeagent completions bash > /opt/homebrew/etc/bash_completion.d/freeagent
+
+# Zsh
+sudo freeagent completions zsh > /opt/homebrew/share/zsh/site-functions/_freeagent
+
+# Fish
+freeagent completions fish > ~/.config/fish/completions/freeagent.fish
+```
+
+### Linux
+
+```bash
+# Bash (system-wide)
+sudo freeagent completions bash > /etc/bash_completion.d/freeagent
+
+# Zsh (system-wide)
+sudo freeagent completions zsh > /usr/share/zsh/site-functions/_freeagent
+
+# Fish (per-user)
+freeagent completions fish > ~/.config/fish/completions/freeagent.fish
+```
+
 ### Structured Flags vs --data
 
 Most write operations accept structured flags with validation. Use `--data` only when you need to pass fields not exposed as flags.

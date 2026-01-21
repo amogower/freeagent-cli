@@ -26,6 +26,7 @@ class Freeagent < Formula
 
   def install
     bin.install "freeagent"
+    generate_completions_from_executable(bin/"freeagent", "completions")
   end
 
   test do
