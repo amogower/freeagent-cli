@@ -1,21 +1,62 @@
 //! OAuth2 configuration with embedded credentials.
 //!
 //! The client ID and secret can be embedded at compile time via environment variables,
-//! or configured at runtime via the login command.
+//! or provided at runtime via environment variables.
+
+use anyhow::{anyhow, Result};
+
+const CLIENT_ID_PLACEHOLDER: &str = "YOUR_CLIENT_ID";
+const CLIENT_SECRET_PLACEHOLDER: &str = "YOUR_CLIENT_SECRET";
 
 /// FreeAgent OAuth2 Client ID
 /// Set FREEAGENT_CLIENT_ID at compile time to embed, or configure at runtime
 pub const CLIENT_ID: &str = match option_env!("FREEAGENT_CLIENT_ID") {
     Some(id) => id,
-    None => "YOUR_CLIENT_ID",
+    None => CLIENT_ID_PLACEHOLDER,
 };
 
 /// FreeAgent OAuth2 Client Secret
 /// Set FREEAGENT_CLIENT_SECRET at compile time to embed, or configure at runtime
 pub const CLIENT_SECRET: &str = match option_env!("FREEAGENT_CLIENT_SECRET") {
     Some(secret) => secret,
-    None => "YOUR_CLIENT_SECRET",
+    None => CLIENT_SECRET_PLACEHOLDER,
 };
+
+/// Resolve the OAuth2 Client ID with runtime env override.
+pub fn client_id() -> Result<String> {
+    if let Ok(value) = std::env::var("FREEAGENT_CLIENT_ID") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() && trimmed != CLIENT_ID_PLACEHOLDER {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    if CLIENT_ID != CLIENT_ID_PLACEHOLDER {
+        return Ok(CLIENT_ID.to_string());
+    }
+
+    Err(anyhow!(
+        "FreeAgent client ID is not configured. Set FREEAGENT_CLIENT_ID or build with FREEAGENT_CLIENT_ID embedded."
+    ))
+}
+
+/// Resolve the OAuth2 Client Secret with runtime env override.
+pub fn client_secret() -> Result<String> {
+    if let Ok(value) = std::env::var("FREEAGENT_CLIENT_SECRET") {
+        let trimmed = value.trim();
+        if !trimmed.is_empty() && trimmed != CLIENT_SECRET_PLACEHOLDER {
+            return Ok(trimmed.to_string());
+        }
+    }
+
+    if CLIENT_SECRET != CLIENT_SECRET_PLACEHOLDER {
+        return Ok(CLIENT_SECRET.to_string());
+    }
+
+    Err(anyhow!(
+        "FreeAgent client secret is not configured. Set FREEAGENT_CLIENT_SECRET or build with FREEAGENT_CLIENT_SECRET embedded."
+    ))
+}
 
 /// FreeAgent Production API base URL
 pub const PRODUCTION_API_URL: &str = "https://api.freeagent.com/v2";
@@ -38,9 +79,34 @@ pub const SANDBOX_TOKEN_URL: &str = "https://api.sandbox.freeagent.com/v2/token_
 /// Local callback port for OAuth redirect
 pub const CALLBACK_PORT: u16 = 8484;
 
+/// Resolve the callback port with runtime env override.
+pub fn callback_port() -> Result<u16> {
+    match std::env::var("FREEAGENT_CALLBACK_PORT") {
+        Ok(value) => {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                return Err(anyhow!("FREEAGENT_CALLBACK_PORT is set but empty"));
+            }
+            let port: u16 = trimmed.parse().map_err(|_| {
+                anyhow!("FREEAGENT_CALLBACK_PORT must be a valid port between 1 and 65535")
+            })?;
+            if port == 0 {
+                return Err(anyhow!(
+                    "FREEAGENT_CALLBACK_PORT must be between 1 and 65535"
+                ));
+            }
+            Ok(port)
+        }
+        Err(std::env::VarError::NotPresent) => Ok(CALLBACK_PORT),
+        Err(std::env::VarError::NotUnicode(_)) => Err(anyhow!(
+            "FREEAGENT_CALLBACK_PORT contains invalid unicode data"
+        )),
+    }
+}
+
 /// OAuth redirect URI
-pub fn redirect_uri() -> String {
-    format!("http://localhost:{}/callback", CALLBACK_PORT)
+pub fn redirect_uri(port: u16) -> String {
+    format!("http://localhost:{}/callback", port)
 }
 
 /// Get API URL based on sandbox mode

@@ -15,7 +15,7 @@ use oauth2::{
 use tiny_http::{Response, Server};
 use url::Url;
 
-use super::config::{self, CLIENT_ID, CLIENT_SECRET};
+use super::config;
 use super::token::{StoredTokens, TokenStorage};
 
 /// OAuth2 authentication manager
@@ -34,10 +34,12 @@ impl OAuthManager {
     }
 
     /// Create the OAuth2 client
-    fn create_client(&self) -> Result<BasicClient> {
+    fn create_client(&self, redirect_uri: &str) -> Result<BasicClient> {
+        let client_id = config::client_id()?;
+        let client_secret = config::client_secret()?;
         let client = BasicClient::new(
-            ClientId::new(CLIENT_ID.to_string()),
-            Some(ClientSecret::new(CLIENT_SECRET.to_string())),
+            ClientId::new(client_id),
+            Some(ClientSecret::new(client_secret)),
             AuthUrl::new(config::auth_url(self.sandbox).to_string())
                 .context("Invalid auth URL")?,
             Some(TokenUrl::new(config::token_url(self.sandbox).to_string())
@@ -45,8 +47,7 @@ impl OAuthManager {
         )
         .set_auth_type(AuthType::RequestBody)
         .set_redirect_uri(
-            RedirectUrl::new(config::redirect_uri())
-                .context("Invalid redirect URL")?,
+            RedirectUrl::new(redirect_uri.to_string()).context("Invalid redirect URL")?,
         );
 
         Ok(client)
@@ -54,7 +55,9 @@ impl OAuthManager {
 
     /// Start the OAuth login flow
     pub async fn login(&self) -> Result<StoredTokens> {
-        let client = self.create_client()?;
+        let callback_port = config::callback_port()?;
+        let redirect_uri = config::redirect_uri(callback_port);
+        let client = self.create_client(&redirect_uri)?;
 
         let use_pkce = std::env::var("FREEAGENT_OAUTH_PKCE")
             .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
@@ -84,7 +87,7 @@ impl OAuthManager {
         }
 
         // Start local server to receive callback
-        let auth_code = self.wait_for_callback(&csrf_token)?;
+        let auth_code = self.wait_for_callback(callback_port, &csrf_token)?;
 
         println!("Authorization code received. Exchanging for tokens...");
 
@@ -123,11 +126,19 @@ impl OAuthManager {
     }
 
     /// Wait for OAuth callback on local server
-    fn wait_for_callback(&self, expected_state: &CsrfToken) -> Result<String> {
-        let server = Server::http(format!("127.0.0.1:{}", config::CALLBACK_PORT))
-            .map_err(|e| anyhow!("Failed to start callback server: {}", e))?;
+    fn wait_for_callback(&self, callback_port: u16, expected_state: &CsrfToken) -> Result<String> {
+        let server = Server::http(format!("127.0.0.1:{}", callback_port)).map_err(|e| {
+            anyhow!(
+                "Failed to start callback server on port {}: {}. If this port is in use, set FREEAGENT_CALLBACK_PORT to a free port and update your FreeAgent app redirect URI to match.",
+                callback_port,
+                e
+            )
+        })?;
 
-        println!("Waiting for authorization callback on port {}...", config::CALLBACK_PORT);
+        println!(
+            "Waiting for authorization callback on port {}...",
+            callback_port
+        );
 
         // Wait for the callback request
         let request = server
@@ -192,7 +203,8 @@ impl OAuthManager {
 
     /// Refresh the access token
     pub async fn refresh(&self, tokens: &mut StoredTokens) -> Result<()> {
-        let client = self.create_client()?;
+        let redirect_uri = config::redirect_uri(config::callback_port()?);
+        let client = self.create_client(&redirect_uri)?;
 
         let token_result = client
             .exchange_refresh_token(&RefreshToken::new(tokens.refresh_token.clone()))

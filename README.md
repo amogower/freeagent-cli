@@ -104,7 +104,7 @@ The workflow builds all targets, packages assets, generates `SHA256SUMS`, and pr
 
 ### OAuth Credentials
 
-OAuth credentials can be provided in two ways:
+OAuth credentials can be provided in three ways:
 
 1. **Compile-time embedding** (recommended for distribution):
    ```bash
@@ -114,12 +114,19 @@ OAuth credentials can be provided in two ways:
 2. **Edit the source** before building:
    Modify `src/auth/config.rs` to include your credentials.
 
+3. **Provide them at runtime** (useful with prebuilt binaries):
+   ```bash
+   FREEAGENT_CLIENT_ID="your_id" FREEAGENT_CLIENT_SECRET="your_secret" freeagent login
+   ```
+
 ### Getting OAuth Credentials
 
 1. Log in to your FreeAgent account
 2. Go to Settings → Developer Dashboard
 3. Create a new OAuth application
 4. Set the redirect URI to `http://localhost:8484/callback`
+   - If you need a different port, set `FREEAGENT_CALLBACK_PORT` and
+     update the redirect URI to match (for example `http://localhost:9191/callback`)
 5. Copy the Client ID and Client Secret
 
 ## Usage
