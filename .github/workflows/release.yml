@@ -9,6 +9,7 @@ on:
       - prepare-release
     types:
       - completed
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -30,11 +31,23 @@ jobs:
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
             git fetch --tags --force
             TAG_NAME=$(git tag --points-at "${{ github.event.workflow_run.head_sha }}" --list 'v*' --sort=-creatordate | head -n 1)
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            MANIFEST_VERSION=$(awk -F ' = ' '/^version =/ { gsub(/"/, "", $2); print $2; exit }' Cargo.toml)
+            if [ -z "$MANIFEST_VERSION" ]; then
+              echo "No version found in Cargo.toml" >&2
+              exit 1
+            fi
+            TAG_NAME="v$MANIFEST_VERSION"
+            git fetch --tags --force
+            if ! git rev-parse -q --verify "refs/tags/$TAG_NAME" >/dev/null; then
+              echo "Release tag $TAG_NAME not found" >&2
+              exit 1
+            fi
           else
             TAG_NAME="${GITHUB_REF_NAME}"
           fi
           if [ -z "$TAG_NAME" ]; then
-            echo "No release tag found for commit ${{ github.event.workflow_run.head_sha }}" >&2
+            echo "No release tag found for event ${{ github.event_name }}" >&2
             exit 1
           fi
           echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
