@@ -1,0 +1,7 @@
+{
+  "name": "freeagent-cli-rust",
+  "private": true,
+  "scripts": {
+    "release": "node scripts/release.js"
+  }
+}
