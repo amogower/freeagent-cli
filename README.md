@@ -1,4 +1,4 @@
-# FreeAgent CLI (Rust)
+# FreeAgent CLI
 
 A comprehensive command-line interface for the FreeAgent accounting API, written in Rust. This CLI provides complete access to all FreeAgent API endpoints with built-in OAuth2 authentication and automatic token refresh.
 
