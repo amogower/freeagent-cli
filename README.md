@@ -369,6 +369,41 @@ freeagent --sandbox invoices list
 | `capital-assets` | Capital asset management |
 | `stock-items` | Stock item management |
 
+## Rate Limit Handling
+
+The CLI automatically handles FreeAgent API rate limits:
+- **Automatic Retry**: Requests that hit rate limits (429 status) are automatically retried
+- **Exponential Backoff**: Uses exponential backoff strategy with configurable parameters
+- **Retry-After Support**: Respects the `Retry-After` header from the API
+- **Configurable**: Customize retry behavior via environment variables
+
+### Rate Limit Configuration
+
+Configure retry behavior using environment variables:
+
+```bash
+# Maximum number of retry attempts (default: 3)
+export FREEAGENT_MAX_RETRIES=5
+
+# Initial backoff duration in seconds (default: 1)
+export FREEAGENT_INITIAL_BACKOFF_SECS=2
+
+# Maximum backoff duration in seconds (default: 60)
+export FREEAGENT_MAX_BACKOFF_SECS=120
+
+# Use exponential backoff (default: true)
+export FREEAGENT_EXPONENTIAL_BACKOFF=true
+```
+
+### FreeAgent API Rate Limits
+
+The FreeAgent API enforces the following limits:
+- **120 requests per minute** per user
+- **3600 requests per hour** per user
+- **15 token refreshes per minute** per user
+
+When these limits are exceeded, the CLI will automatically wait and retry according to the configured strategy.
+
 ## Token Storage
 
 Tokens are stored in the platform-specific config directory:
