@@ -124,9 +124,8 @@ OAuth credentials can be provided in three ways:
 1. Log in to your FreeAgent account
 2. Go to Settings → Developer Dashboard
 3. Create a new OAuth application
-4. Set the redirect URI to `http://localhost:8484/callback`
-   - If you need a different port, set `FREEAGENT_CALLBACK_PORT` and
-     update the redirect URI to match (for example `http://localhost:9191/callback`)
+4. Set the redirect URI to `http://localhost:*/callback`
+   - The CLI will pick an available local port automatically
 5. Copy the Client ID and Client Secret
 
 ## Usage

@@ -76,34 +76,6 @@ pub const PRODUCTION_TOKEN_URL: &str = "https://api.freeagent.com/v2/token_endpo
 /// FreeAgent Sandbox OAuth token URL
 pub const SANDBOX_TOKEN_URL: &str = "https://api.sandbox.freeagent.com/v2/token_endpoint";
 
-/// Local callback port for OAuth redirect
-pub const CALLBACK_PORT: u16 = 8484;
-
-/// Resolve the callback port with runtime env override.
-pub fn callback_port() -> Result<u16> {
-    match std::env::var("FREEAGENT_CALLBACK_PORT") {
-        Ok(value) => {
-            let trimmed = value.trim();
-            if trimmed.is_empty() {
-                return Err(anyhow!("FREEAGENT_CALLBACK_PORT is set but empty"));
-            }
-            let port: u16 = trimmed.parse().map_err(|_| {
-                anyhow!("FREEAGENT_CALLBACK_PORT must be a valid port between 1 and 65535")
-            })?;
-            if port == 0 {
-                return Err(anyhow!(
-                    "FREEAGENT_CALLBACK_PORT must be between 1 and 65535"
-                ));
-            }
-            Ok(port)
-        }
-        Err(std::env::VarError::NotPresent) => Ok(CALLBACK_PORT),
-        Err(std::env::VarError::NotUnicode(_)) => Err(anyhow!(
-            "FREEAGENT_CALLBACK_PORT contains invalid unicode data"
-        )),
-    }
-}
-
 /// OAuth redirect URI
 pub fn redirect_uri(port: u16) -> String {
     format!("http://localhost:{}/callback", port)
