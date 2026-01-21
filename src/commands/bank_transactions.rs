@@ -181,3 +181,15 @@ impl BankTransactionCommands {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bank_transaction_view_as_str_matches_api() {
+        assert_eq!(BankTransactionView::All.as_str(), "all");
+        assert_eq!(BankTransactionView::ManuallyAdded.as_str(), "manually_added");
+        assert_eq!(BankTransactionView::Imported.as_str(), "imported");
+    }
+}

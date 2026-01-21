@@ -243,3 +243,22 @@ impl ProjectCommands {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn project_view_as_str_matches_api() {
+        assert_eq!(ProjectView::Active.as_str(), "active");
+        assert_eq!(ProjectView::Cancelled.as_str(), "cancelled");
+        assert_eq!(ProjectView::All.as_str(), "all");
+    }
+
+    #[test]
+    fn budget_units_as_str_matches_api() {
+        assert_eq!(BudgetUnits::Hours.as_str(), "Hours");
+        assert_eq!(BudgetUnits::Days.as_str(), "Days");
+        assert_eq!(BudgetUnits::Monetary.as_str(), "Monetary");
+    }
+}

@@ -226,3 +226,15 @@ impl ExpenseCommands {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn expense_view_as_str_matches_api() {
+        assert_eq!(ExpenseView::All.as_str(), "all");
+        assert_eq!(ExpenseView::Unbilled.as_str(), "unbilled");
+        assert_eq!(ExpenseView::Billed.as_str(), "billed");
+    }
+}

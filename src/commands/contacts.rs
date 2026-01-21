@@ -322,3 +322,21 @@ impl ContactCommands {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn contact_view_as_str_matches_api() {
+        assert_eq!(ContactView::All.as_str(), "all");
+        assert_eq!(ContactView::ActiveProjects.as_str(), "active_projects");
+        assert_eq!(ContactView::OpenSuppliers.as_str(), "open_suppliers");
+    }
+
+    #[test]
+    fn contact_sort_as_str_supports_descending() {
+        assert_eq!(ContactSort::Name.as_str(false), "name");
+        assert_eq!(ContactSort::UpdatedAt.as_str(true), "-updated_at");
+    }
+}

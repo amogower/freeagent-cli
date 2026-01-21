@@ -136,3 +136,56 @@ pub fn print_success(message: &str) {
 pub fn print_info(message: &str) {
     println!("{} {}", "ℹ".blue(), message);
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::{json, Value};
+
+    #[test]
+    fn output_format_default_is_json() {
+        assert_eq!(OutputFormat::default(), OutputFormat::Json);
+    }
+
+    #[test]
+    fn find_array_returns_top_level_array() {
+        let value = json!([{"id": 1}, {"id": 2}]);
+        let array = find_array(&value).expect("array should be found");
+        assert_eq!(array.len(), 2);
+    }
+
+    #[test]
+    fn find_array_searches_object_values() {
+        let value = json!({
+            "meta": {"count": 2},
+            "items": [{"id": 1}]
+        });
+        let array = find_array(&value).expect("array should be found");
+        assert_eq!(array.len(), 1);
+    }
+
+    #[test]
+    fn format_value_truncates_long_strings() {
+        let long_string = "a".repeat(60);
+        let value_json = json!(long_string);
+        let value = Some(&value_json);
+        let formatted = format_value(value);
+        assert!(formatted.ends_with("..."));
+        assert_eq!(formatted.len(), 50);
+    }
+
+    #[test]
+    fn format_value_handles_null_and_missing() {
+        assert_eq!(format_value(None), "");
+        assert_eq!(format_value(Some(&Value::Null)), "");
+    }
+
+    #[test]
+    fn format_value_handles_scalars_and_containers() {
+        assert_eq!(format_value(Some(&json!(true))), "true");
+        assert_eq!(format_value(Some(&json!(42))), "42");
+        assert_eq!(format_value(Some(&json!("hi"))), "hi");
+        assert_eq!(format_value(Some(&json!([1, 2, 3]))), "[3 items]");
+        assert_eq!(format_value(Some(&json!({"a": 1}))), "[object]");
+    }
+}

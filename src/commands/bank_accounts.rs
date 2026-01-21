@@ -201,3 +201,22 @@ impl BankAccountCommands {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bank_account_view_as_str_matches_api() {
+        assert_eq!(BankAccountView::Standard.as_str(), "standard");
+        assert_eq!(BankAccountView::CreditCard.as_str(), "credit_card");
+        assert_eq!(BankAccountView::All.as_str(), "all");
+    }
+
+    #[test]
+    fn bank_account_type_as_str_matches_api() {
+        assert_eq!(BankAccountType::StandardBankAccount.as_str(), "StandardBankAccount");
+        assert_eq!(BankAccountType::CreditCardAccount.as_str(), "CreditCardAccount");
+        assert_eq!(BankAccountType::MerchantAccount.as_str(), "MerchantAccount");
+    }
+}

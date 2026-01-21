@@ -231,3 +231,15 @@ impl BillCommands {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn bill_view_as_str_matches_api() {
+        assert_eq!(BillView::RecentOpenOrOverdue.as_str(), "recent_open_or_overdue");
+        assert_eq!(BillView::OpenOrOverdue.as_str(), "open_or_overdue");
+        assert_eq!(BillView::All.as_str(), "all");
+    }
+}

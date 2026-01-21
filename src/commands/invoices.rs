@@ -385,3 +385,22 @@ impl InvoiceCommands {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn invoice_view_as_str_matches_api() {
+        assert_eq!(InvoiceView::RecentOpenOrOverdue.as_str(), "recent_open_or_overdue");
+        assert_eq!(InvoiceView::ScheduledToEmail.as_str(), "scheduled_to_email");
+        assert_eq!(InvoiceView::All.as_str(), "all");
+    }
+
+    #[test]
+    fn ec_status_as_str_matches_api() {
+        assert_eq!(EcStatus::Uk.as_str(), "UK");
+        assert_eq!(EcStatus::EcGoods.as_str(), "EC Goods");
+        assert_eq!(EcStatus::NonEc.as_str(), "Non-EC");
+    }
+}

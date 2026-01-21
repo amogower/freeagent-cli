@@ -107,3 +107,99 @@ pub fn token_url(sandbox: bool) -> &'static str {
         PRODUCTION_TOKEN_URL
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+
+    struct EnvGuard {
+        client_id: Option<String>,
+        client_secret: Option<String>,
+    }
+
+    impl EnvGuard {
+        fn new() -> Self {
+            Self {
+                client_id: std::env::var("FREEAGENT_CLIENT_ID").ok(),
+                client_secret: std::env::var("FREEAGENT_CLIENT_SECRET").ok(),
+            }
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            if let Some(value) = &self.client_id {
+                std::env::set_var("FREEAGENT_CLIENT_ID", value);
+            } else {
+                std::env::remove_var("FREEAGENT_CLIENT_ID");
+            }
+
+            if let Some(value) = &self.client_secret {
+                std::env::set_var("FREEAGENT_CLIENT_SECRET", value);
+            } else {
+                std::env::remove_var("FREEAGENT_CLIENT_SECRET");
+            }
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn client_id_uses_env_override() {
+        let _guard = EnvGuard::new();
+        std::env::set_var("FREEAGENT_CLIENT_ID", "env-client-id");
+        let resolved = client_id().expect("client_id should resolve from env");
+        assert_eq!(resolved, "env-client-id");
+    }
+
+    #[test]
+    #[serial]
+    fn client_secret_uses_env_override() {
+        let _guard = EnvGuard::new();
+        std::env::set_var("FREEAGENT_CLIENT_SECRET", "env-client-secret");
+        let resolved = client_secret().expect("client_secret should resolve from env");
+        assert_eq!(resolved, "env-client-secret");
+    }
+
+    #[test]
+    #[serial]
+    fn client_id_errors_when_missing() {
+        let _guard = EnvGuard::new();
+        std::env::remove_var("FREEAGENT_CLIENT_ID");
+        let result = client_id();
+        if CLIENT_ID == CLIENT_ID_PLACEHOLDER {
+            assert!(result.is_err());
+        } else {
+            assert_eq!(result.unwrap(), CLIENT_ID);
+        }
+    }
+
+    #[test]
+    #[serial]
+    fn client_secret_errors_when_missing() {
+        let _guard = EnvGuard::new();
+        std::env::remove_var("FREEAGENT_CLIENT_SECRET");
+        let result = client_secret();
+        if CLIENT_SECRET == CLIENT_SECRET_PLACEHOLDER {
+            assert!(result.is_err());
+        } else {
+            assert_eq!(result.unwrap(), CLIENT_SECRET);
+        }
+    }
+
+    #[test]
+    fn redirect_uri_includes_port() {
+        let uri = redirect_uri(4242);
+        assert_eq!(uri, "http://localhost:4242/callback");
+    }
+
+    #[test]
+    fn urls_switch_between_prod_and_sandbox() {
+        assert_eq!(api_url(false), PRODUCTION_API_URL);
+        assert_eq!(api_url(true), SANDBOX_API_URL);
+        assert_eq!(auth_url(false), PRODUCTION_AUTH_URL);
+        assert_eq!(auth_url(true), SANDBOX_AUTH_URL);
+        assert_eq!(token_url(false), PRODUCTION_TOKEN_URL);
+        assert_eq!(token_url(true), SANDBOX_TOKEN_URL);
+    }
+}

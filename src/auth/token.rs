@@ -155,3 +155,143 @@ impl Default for TokenStorage {
         Self::new().expect("Failed to initialize token storage")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serial_test::serial;
+    use tempfile::tempdir;
+
+    struct EnvGuard {
+        home: Option<String>,
+        xdg_config_home: Option<String>,
+        appdata: Option<String>,
+        local_appdata: Option<String>,
+        userprofile: Option<String>,
+    }
+
+    impl EnvGuard {
+        fn new(temp_path: &str) -> Self {
+            let guard = Self {
+                home: std::env::var("HOME").ok(),
+                xdg_config_home: std::env::var("XDG_CONFIG_HOME").ok(),
+                appdata: std::env::var("APPDATA").ok(),
+                local_appdata: std::env::var("LOCALAPPDATA").ok(),
+                userprofile: std::env::var("USERPROFILE").ok(),
+            };
+
+            std::env::set_var("HOME", temp_path);
+            std::env::set_var("XDG_CONFIG_HOME", temp_path);
+            std::env::set_var("APPDATA", temp_path);
+            std::env::set_var("LOCALAPPDATA", temp_path);
+            std::env::set_var("USERPROFILE", temp_path);
+
+            guard
+        }
+    }
+
+    impl Drop for EnvGuard {
+        fn drop(&mut self) {
+            if let Some(value) = &self.home {
+                std::env::set_var("HOME", value);
+            } else {
+                std::env::remove_var("HOME");
+            }
+
+            if let Some(value) = &self.xdg_config_home {
+                std::env::set_var("XDG_CONFIG_HOME", value);
+            } else {
+                std::env::remove_var("XDG_CONFIG_HOME");
+            }
+
+            if let Some(value) = &self.appdata {
+                std::env::set_var("APPDATA", value);
+            } else {
+                std::env::remove_var("APPDATA");
+            }
+
+            if let Some(value) = &self.local_appdata {
+                std::env::set_var("LOCALAPPDATA", value);
+            } else {
+                std::env::remove_var("LOCALAPPDATA");
+            }
+
+            if let Some(value) = &self.userprofile {
+                std::env::set_var("USERPROFILE", value);
+            } else {
+                std::env::remove_var("USERPROFILE");
+            }
+        }
+    }
+
+    #[test]
+    fn stored_tokens_expired_within_five_minutes() {
+        let tokens = StoredTokens::new(
+            "access".to_string(),
+            "refresh".to_string(),
+            60,
+            false,
+        );
+        assert!(tokens.is_expired());
+    }
+
+    #[test]
+    fn stored_tokens_update_replaces_refresh() {
+        let mut tokens = StoredTokens::new(
+            "access".to_string(),
+            "refresh".to_string(),
+            3600,
+            false,
+        );
+        tokens.update("new-access".to_string(), Some("new-refresh".to_string()), 1800);
+        assert_eq!(tokens.access_token, "new-access");
+        assert_eq!(tokens.refresh_token, "new-refresh");
+    }
+
+    #[test]
+    fn stored_tokens_update_keeps_refresh_when_none() {
+        let mut tokens = StoredTokens::new(
+            "access".to_string(),
+            "refresh".to_string(),
+            3600,
+            false,
+        );
+        tokens.update("new-access".to_string(), None, 1800);
+        assert_eq!(tokens.access_token, "new-access");
+        assert_eq!(tokens.refresh_token, "refresh");
+    }
+
+    #[test]
+    #[serial]
+    fn token_storage_save_load_delete_roundtrip() -> Result<()> {
+        let temp_dir = tempdir()?;
+        let _guard = EnvGuard::new(temp_dir.path().to_str().expect("temp path"));
+
+        let storage = TokenStorage::new()?;
+        let tokens = StoredTokens::new(
+            "access".to_string(),
+            "refresh".to_string(),
+            3600,
+            true,
+        );
+
+        storage.save(&tokens)?;
+
+        let loaded = storage.load()?.expect("tokens should load");
+        assert_eq!(loaded.access_token, tokens.access_token);
+        assert_eq!(loaded.refresh_token, tokens.refresh_token);
+        assert_eq!(loaded.sandbox, tokens.sandbox);
+        assert_eq!(loaded.expires_at, tokens.expires_at);
+
+        #[cfg(unix)]
+        {
+            let perms = fs::metadata(storage.token_file_path())?.permissions();
+            assert_eq!(perms.mode() & 0o777, 0o600);
+        }
+
+        storage.delete()?;
+        assert!(storage.load()?.is_none());
+
+        Ok(())
+    }
+}
