@@ -6,10 +6,11 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::RwLock;
 
 use crate::auth::{api_url, OAuthManager, StoredTokens};
-use crate::api::retry::{check_rate_limit, RetryConfig, RetryDecision};
+use crate::api::retry::{RateLimitInfo, RetryConfig};
 
 /// FreeAgent API client
 pub struct FreeAgentClient {
@@ -135,32 +136,33 @@ impl FreeAgentClient {
 
             // Check for rate limit before consuming the response
             if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-                let decision = check_rate_limit(&response, attempt, &self.retry_config).await;
-                
-                match decision {
-                    RetryDecision::Retry(duration) => {
-                        eprintln!(
-                            "Rate limit exceeded. Waiting {} seconds before retry (attempt {}/{})...",
-                            duration.as_secs(),
-                            attempt + 1,
-                            self.retry_config.max_retries
-                        );
-                        tokio::time::sleep(duration).await;
-                        attempt += 1;
-                        continue;
-                    }
-                    RetryDecision::Fail(msg) => {
-                        // Consume the response to get the body
-                        let error_text = response
-                            .text()
-                            .await
-                            .unwrap_or_else(|_| "Rate limit exceeded".to_string());
-                        anyhow::bail!("{}\nAPI Response: {}", msg, error_text);
-                    }
-                    RetryDecision::Success => {
-                        // This shouldn't happen for 429, but handle it anyway
-                    }
+                let fallback_retry_after_secs = self.retry_config.backoff_duration(attempt).as_secs();
+                let rate_limit =
+                    RateLimitInfo::from_response(response, fallback_retry_after_secs).await?;
+
+                if attempt >= self.retry_config.max_retries {
+                    anyhow::bail!(
+                        "Rate limit exceeded. Maximum retry attempts ({}) reached. Retry after {} seconds. API Response: {}",
+                        self.retry_config.max_retries,
+                        rate_limit.retry_after_secs,
+                        rate_limit.message
+                    );
                 }
+
+                let retry_after_secs = rate_limit
+                    .retry_after_secs
+                    .min(self.retry_config.max_backoff_secs);
+                let duration = Duration::from_secs(retry_after_secs);
+
+                eprintln!(
+                    "Rate limit exceeded. Waiting {} seconds before retry (attempt {}/{})...",
+                    duration.as_secs(),
+                    attempt + 1,
+                    self.retry_config.max_retries
+                );
+                tokio::time::sleep(duration).await;
+                attempt += 1;
+                continue;
             }
             
             // Handle the response normally

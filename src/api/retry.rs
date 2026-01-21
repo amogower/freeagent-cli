@@ -1,6 +1,6 @@
 //! Retry logic and rate limit handling for API requests.
 
-use anyhow::{Context, Result};
+use anyhow::Result;
 use reqwest::Response;
 use std::time::Duration;
 
@@ -82,16 +82,17 @@ pub struct RateLimitInfo {
 
 impl RateLimitInfo {
     /// Extract rate limit information from a 429 response
-    pub async fn from_response(response: Response) -> Result<Self> {
-        // Try to extract Retry-After header
+    pub async fn from_response(
+        response: Response,
+        fallback_retry_after_secs: u64,
+    ) -> Result<Self> {
         let retry_after_secs = response
             .headers()
             .get("Retry-After")
             .and_then(|v| v.to_str().ok())
             .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or(60); // Default to 60 seconds if not specified
+            .unwrap_or(fallback_retry_after_secs);
 
-        // Extract error message from body
         let message = response
             .text()
             .await
@@ -103,54 +104,6 @@ impl RateLimitInfo {
         })
     }
 
-    /// Get the duration to wait before retrying
-    pub fn retry_duration(&self) -> Duration {
-        Duration::from_secs(self.retry_after_secs)
-    }
-}
-
-/// Result of checking if a response should be retried
-#[derive(Debug)]
-pub enum RetryDecision {
-    /// Retry after the specified duration
-    Retry(Duration),
-    /// Do not retry, return the error
-    Fail(String),
-    /// Success, no retry needed
-    Success,
-}
-
-/// Check if a response indicates a rate limit and should be retried
-pub async fn check_rate_limit(response: &Response, attempt: u32, config: &RetryConfig) -> RetryDecision {
-    let status = response.status();
-
-    // Check if this is a rate limit response
-    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        if attempt >= config.max_retries {
-            return RetryDecision::Fail(format!(
-                "Rate limit exceeded. Maximum retry attempts ({}) reached.",
-                config.max_retries
-            ));
-        }
-
-        // Try to extract Retry-After header
-        let retry_after_secs = response
-            .headers()
-            .get("Retry-After")
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| v.parse::<u64>().ok())
-            .unwrap_or_else(|| {
-                // Use exponential backoff if no Retry-After header
-                config.backoff_duration(attempt).as_secs()
-            });
-
-        // Cap at max backoff
-        let retry_after_secs = retry_after_secs.min(config.max_backoff_secs);
-
-        return RetryDecision::Retry(Duration::from_secs(retry_after_secs));
-    }
-
-    RetryDecision::Success
 }
 
 #[cfg(test)]
