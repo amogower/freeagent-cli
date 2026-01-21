@@ -36,6 +36,24 @@ pub enum VatCommands {
         /// VAT return ID
         id: String,
     },
+
+    /// Mark a VAT return payment as paid
+    MarkPaymentAsPaid {
+        /// VAT return period end date (YYYY-MM-DD)
+        period_ends_on: String,
+
+        /// Payment date (YYYY-MM-DD)
+        payment_date: String,
+    },
+
+    /// Mark a VAT return payment as unpaid
+    MarkPaymentAsUnpaid {
+        /// VAT return period end date (YYYY-MM-DD)
+        period_ends_on: String,
+
+        /// Payment date (YYYY-MM-DD)
+        payment_date: String,
+    },
 }
 
 impl VatCommands {
@@ -59,6 +77,30 @@ impl VatCommands {
             }
             Self::MarkAsUnfiled { id } => {
                 let result = client.put(&format!("vat_returns/{}/transitions/mark_as_unfiled", id), None::<()>).await?;
+                print_output(&result, format);
+            }
+            Self::MarkPaymentAsPaid { period_ends_on, payment_date } => {
+                let result = client
+                    .put(
+                        &format!(
+                            "vat_returns/{}/payments/{}/mark_as_paid",
+                            period_ends_on, payment_date
+                        ),
+                        None::<()>,
+                    )
+                    .await?;
+                print_output(&result, format);
+            }
+            Self::MarkPaymentAsUnpaid { period_ends_on, payment_date } => {
+                let result = client
+                    .put(
+                        &format!(
+                            "vat_returns/{}/payments/{}/mark_as_unpaid",
+                            period_ends_on, payment_date
+                        ),
+                        None::<()>,
+                    )
+                    .await?;
                 print_output(&result, format);
             }
         }

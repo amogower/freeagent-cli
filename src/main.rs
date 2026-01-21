@@ -160,6 +160,98 @@ enum Commands {
     /// Stock item management
     #[command(subcommand)]
     StockItems(stock_items::StockItemCommands),
+
+    /// Account manager management
+    #[command(subcommand)]
+    AccountManagers(account_managers::AccountManagerCommands),
+
+    /// Practice management
+    #[command(subcommand)]
+    Practice(practice::PracticeCommands),
+
+    /// Practice client management
+    #[command(subcommand)]
+    Clients(clients::ClientCommands),
+
+    /// Bank feed management
+    #[command(subcommand)]
+    BankFeeds(bank_feeds::BankFeedCommands),
+
+    /// Bank transaction explanation management
+    #[command(subcommand)]
+    BankTransactionExplanations(bank_transaction_explanations::BankTransactionExplanationCommands),
+
+    /// Corporation tax return management
+    #[command(subcommand)]
+    CorporationTaxReturns(corporation_tax_returns::CorporationTaxReturnCommands),
+
+    /// Credit note reconciliation management
+    #[command(subcommand)]
+    CreditNoteReconciliations(credit_note_reconciliations::CreditNoteReconciliationCommands),
+
+    /// Currency management
+    #[command(subcommand)]
+    Currencies(currencies::CurrencyCommands),
+
+    /// Depreciation profile management
+    #[command(subcommand)]
+    DepreciationProfiles(depreciation_profiles::DepreciationProfileCommands),
+
+    /// EC MOSS management
+    #[command(subcommand)]
+    EcMoss(ec_moss::EcMossCommands),
+
+    /// Email address management
+    #[command(subcommand)]
+    EmailAddresses(email_addresses::EmailAddressCommands),
+
+    /// Estimate item management
+    #[command(subcommand)]
+    EstimateItems(estimate_items::EstimateItemCommands),
+
+    /// Final accounts report management
+    #[command(subcommand)]
+    FinalAccountsReports(final_accounts_reports::FinalAccountsReportCommands),
+
+    /// Hire purchase management
+    #[command(subcommand)]
+    HirePurchases(hire_purchases::HirePurchaseCommands),
+
+    /// Income tax return management
+    #[command(subcommand)]
+    IncomeTaxReturns(income_tax_returns::IncomeTaxReturnCommands),
+
+    /// Journal set management
+    #[command(subcommand)]
+    JournalSets(journal_sets::JournalSetCommands),
+
+    /// Payroll management
+    #[command(subcommand)]
+    Payroll(payroll::PayrollCommands),
+
+    /// Payroll profile management
+    #[command(subcommand)]
+    PayrollProfiles(payroll_profiles::PayrollProfileCommands),
+
+    /// Price list item management
+    #[command(subcommand)]
+    PriceListItems(price_list_items::PriceListItemCommands),
+
+    /// Property management
+    #[command(subcommand)]
+    Properties(properties::PropertyCommands),
+
+    /// Sales tax period management
+    #[command(subcommand)]
+    SalesTaxPeriods(sales_tax_periods::SalesTaxPeriodCommands),
+
+    /// Capital asset type management
+    #[command(subcommand)]
+    CapitalAssetTypes(capital_asset_types::CapitalAssetTypeCommands),
+
+    /// CIS band management
+    #[command(subcommand)]
+    CisBands(cis_bands::CisBandCommands),
 }
 
 #[tokio::main]
@@ -213,6 +305,29 @@ async fn main() -> Result<()> {
                 Commands::Notes(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::CapitalAssets(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::StockItems(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::AccountManagers(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::Practice(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::Clients(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::BankFeeds(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::BankTransactionExplanations(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::CorporationTaxReturns(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::CreditNoteReconciliations(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::Currencies(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::DepreciationProfiles(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::EcMoss(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::EmailAddresses(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::EstimateItems(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::FinalAccountsReports(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::HirePurchases(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::IncomeTaxReturns(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::JournalSets(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::Payroll(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::PayrollProfiles(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::PriceListItems(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::Properties(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::SalesTaxPeriods(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::CapitalAssetTypes(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::CisBands(cmd) => cmd.execute(&client, cli.format).await?,
                 // Already handled above
                 Commands::Login | Commands::Logout | Commands::Status | Commands::Update { .. } => {
                     unreachable!()

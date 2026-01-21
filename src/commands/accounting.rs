@@ -69,6 +69,15 @@ pub enum AccountingCommands {
         #[arg(long)]
         to_date: Option<String>,
     },
+
+    /// List all accounting transactions
+    Transactions,
+
+    /// Get an accounting transaction by ID
+    Transaction {
+        /// Transaction ID
+        id: String,
+    },
 }
 
 impl AccountingCommands {
@@ -119,6 +128,14 @@ impl AccountingCommands {
                     .add("to_date", to_date.clone())
                     .build();
                 let result = client.get("accounting/account_transactions", params).await?;
+                print_output(&result, format);
+            }
+            Self::Transactions => {
+                let result = client.get("accounting/transactions", None).await?;
+                print_output(&result, format);
+            }
+            Self::Transaction { id } => {
+                let result = client.get(&format!("accounting/transactions/{}", id), None).await?;
                 print_output(&result, format);
             }
         }

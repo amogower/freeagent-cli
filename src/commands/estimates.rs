@@ -2,7 +2,7 @@
 
 use anyhow::Result;
 use clap::Subcommand;
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::api::{FreeAgentClient, QueryBuilder};
 use crate::output::{print_output, OutputFormat};
@@ -94,6 +94,20 @@ pub enum EstimateCommands {
         #[arg(long)]
         email_to: String,
     },
+
+    /// Update default additional text (JSON payload)
+    UpdateDefaultAdditionalText {
+        /// Default additional text
+        #[arg(long)]
+        text: Option<String>,
+
+        /// JSON body for the request
+        #[arg(long)]
+        data: Option<String>,
+    },
+
+    /// Delete default additional text
+    DeleteDefaultAdditionalText,
 }
 
 impl EstimateCommands {
@@ -162,6 +176,29 @@ impl EstimateCommands {
             Self::SendEmail { id, email_to } => {
                 let body = json!({ "email": { "to": email_to } });
                 let result = client.post(&format!("estimates/{}/send_email", id), Some(body)).await?;
+                print_output(&result, format);
+            }
+            Self::UpdateDefaultAdditionalText { text, data } => {
+                let using_structured = text.is_some();
+                let body: Value = match data {
+                    Some(raw) => {
+                        if using_structured {
+                            anyhow::bail!("Use either --text or --data, not both");
+                        }
+                        serde_json::from_str(&raw)?
+                    }
+                    None => {
+                        if text.is_none() {
+                            anyhow::bail!("Missing required field: --text");
+                        }
+                        serde_json::json!({ "default_additional_text": text })
+                    }
+                };
+                let result = client.put("estimates/default_additional_text", Some(body)).await?;
+                print_output(&result, format);
+            }
+            Self::DeleteDefaultAdditionalText => {
+                let result = client.delete("estimates/default_additional_text").await?;
                 print_output(&result, format);
             }
         }

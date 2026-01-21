@@ -81,6 +81,33 @@ pub enum UserCommands {
         #[arg(long)]
         permission_level: Option<i32>,
     },
+
+    /// Update the current user
+    UpdateMe {
+        /// First name
+        #[arg(long)]
+        first_name: Option<String>,
+
+        /// Last name
+        #[arg(long)]
+        last_name: Option<String>,
+
+        /// Email address
+        #[arg(long)]
+        email: Option<String>,
+
+        /// User role
+        #[arg(long)]
+        role: Option<String>,
+
+        /// Permission level (0-8)
+        #[arg(long)]
+        permission_level: Option<i32>,
+
+        /// Opening mileage
+        #[arg(long)]
+        opening_mileage: Option<String>,
+    },
     
     /// Delete a user
     Delete {
@@ -175,6 +202,39 @@ impl UserCommands {
                     return Ok(());
                 }
                 let result = client.delete(&format!("users/{}", id)).await?;
+                print_output(&result, format);
+            }
+            Self::UpdateMe {
+                first_name,
+                last_name,
+                email,
+                role,
+                permission_level,
+                opening_mileage,
+            } => {
+                let mut user = serde_json::Map::new();
+
+                if let Some(v) = first_name {
+                    user.insert("first_name".to_string(), json!(v));
+                }
+                if let Some(v) = last_name {
+                    user.insert("last_name".to_string(), json!(v));
+                }
+                if let Some(v) = email {
+                    user.insert("email".to_string(), json!(v));
+                }
+                if let Some(v) = role {
+                    user.insert("role".to_string(), json!(v));
+                }
+                if let Some(v) = permission_level {
+                    user.insert("permission_level".to_string(), json!(v));
+                }
+                if let Some(v) = opening_mileage {
+                    user.insert("opening_mileage".to_string(), json!(v));
+                }
+
+                let body = json!({ "user": user });
+                let result = client.put("users/me", Some(body)).await?;
                 print_output(&result, format);
             }
         }

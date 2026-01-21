@@ -110,6 +110,18 @@ git push origin v0.1.0
 The workflow builds all targets, packages assets, generates `SHA256SUMS`, and produces
 `dist/freeagent.rb` for Homebrew (copy it into your tap repo).
 
+
+## Documentation
+
+Detailed command reference lives in `docs/` with one markdown file per top-level command.
+
+- Run `freeagent <command> --help` for quick usage
+- See `docs/<command>.md` for full subcommand and flag details
+
+### Structured Flags vs --data
+
+Most write operations accept structured flags with validation. Use `--data` only when you need to pass fields not exposed as flags.
+
 ## Configuration
 
 This CLI is configured for OAuth out of the box. If you are building
