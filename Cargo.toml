@@ -59,6 +59,11 @@ base64 = "0.21"
 # SHA256 for PKCE
 sha2 = "0.10"
 
+# Auto-update support
+flate2 = "1.0"
+semver = "1.0"
+tar = "0.4"
+
 [profile.release]
 opt-level = "z"
 lto = true

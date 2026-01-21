@@ -26,6 +26,7 @@ mod api;
 mod auth;
 mod commands;
 mod output;
+mod update;
 
 use anyhow::Result;
 use clap::{Parser, Subcommand};
@@ -50,6 +51,10 @@ struct Cli {
     #[arg(long, global = true)]
     sandbox: bool,
 
+    /// Disable automatic update checks
+    #[arg(long, global = true, env = "FREEAGENT_NO_UPDATE")]
+    no_update: bool,
+
     #[command(subcommand)]
     command: Commands,
 }
@@ -64,6 +69,13 @@ enum Commands {
     
     /// Show current authentication status
     Status,
+
+    /// Update the CLI to the latest release
+    Update {
+        /// Skip confirmation prompt
+        #[arg(long)]
+        yes: bool,
+    },
     
     /// Company management
     #[command(subcommand)]
@@ -154,6 +166,10 @@ enum Commands {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
+    if update::maybe_auto_update(cli.no_update).await? {
+        return Ok(());
+    }
+
     match cli.command {
         // Auth commands don't need a client
         Commands::Login => {
@@ -166,6 +182,9 @@ async fn main() -> Result<()> {
         }
         Commands::Status => {
             commands::auth::AuthCommands::Status.execute(cli.sandbox).await?;
+        }
+        Commands::Update { yes } => {
+            update::run_update(yes).await?;
         }
         
         // All other commands need an authenticated client
@@ -195,7 +214,9 @@ async fn main() -> Result<()> {
                 Commands::CapitalAssets(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::StockItems(cmd) => cmd.execute(&client, cli.format).await?,
                 // Already handled above
-                Commands::Login | Commands::Logout | Commands::Status => unreachable!(),
+                Commands::Login | Commands::Logout | Commands::Status | Commands::Update { .. } => {
+                    unreachable!()
+                }
             }
         }
     }
