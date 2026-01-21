@@ -1,4 +1,4 @@
-//! FreeAgent API client with automatic token refresh.
+//! FreeAgent API client with automatic token refresh and rate limit handling.
 
 use anyhow::{Context, Result};
 use reqwest::{Client, Method, Response};
@@ -9,6 +9,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 
 use crate::auth::{api_url, OAuthManager, StoredTokens};
+use crate::api::retry::{check_rate_limit, RetryConfig, RetryDecision};
 
 /// FreeAgent API client
 pub struct FreeAgentClient {
@@ -16,6 +17,7 @@ pub struct FreeAgentClient {
     oauth_manager: OAuthManager,
     tokens: Arc<RwLock<StoredTokens>>,
     base_url: String,
+    retry_config: RetryConfig,
 }
 
 impl FreeAgentClient {
@@ -35,6 +37,7 @@ impl FreeAgentClient {
             oauth_manager,
             tokens: Arc::new(RwLock::new(tokens)),
             base_url,
+            retry_config: RetryConfig::from_env(),
         })
     }
 
@@ -52,7 +55,14 @@ impl FreeAgentClient {
             oauth_manager,
             tokens: Arc::new(RwLock::new(tokens)),
             base_url,
+            retry_config: RetryConfig::default(),
         })
+    }
+
+    #[cfg(test)]
+    pub(crate) fn with_retry_config(mut self, config: RetryConfig) -> Self {
+        self.retry_config = config;
+        self
     }
 
     /// Get the current access token, refreshing if necessary
@@ -91,7 +101,7 @@ impl FreeAgentClient {
         self.request(Method::DELETE, endpoint, None, None::<()>).await
     }
 
-    /// Make an HTTP request
+    /// Make an HTTP request with automatic retry on rate limit
     async fn request<T: Serialize>(
         &self,
         method: Method,
@@ -99,27 +109,63 @@ impl FreeAgentClient {
         params: Option<HashMap<String, String>>,
         body: Option<T>,
     ) -> Result<Value> {
-        let url = self.build_url(endpoint);
-        let token = self.get_access_token().await?;
+        let mut attempt = 0;
 
-        let mut request = self
-            .http_client
-            .request(method.clone(), &url)
-            .header("Authorization", format!("Bearer {}", token))
-            .header("Accept", "application/json")
-            .header("Content-Type", "application/json");
+        loop {
+            let url = self.build_url(endpoint);
+            let token = self.get_access_token().await?;
 
-        if let Some(p) = params {
-            request = request.query(&p);
+            let mut request = self
+                .http_client
+                .request(method.clone(), &url)
+                .header("Authorization", format!("Bearer {}", token))
+                .header("Accept", "application/json")
+                .header("Content-Type", "application/json");
+
+            if let Some(ref p) = params {
+                request = request.query(p);
+            }
+
+            if let Some(ref b) = body {
+                request = request.json(b);
+            }
+
+            let response = request.send().await.context("Request failed")?;
+            let status = response.status();
+
+            // Check for rate limit before consuming the response
+            if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
+                let decision = check_rate_limit(&response, attempt, &self.retry_config).await;
+                
+                match decision {
+                    RetryDecision::Retry(duration) => {
+                        eprintln!(
+                            "Rate limit exceeded. Waiting {} seconds before retry (attempt {}/{})...",
+                            duration.as_secs(),
+                            attempt + 1,
+                            self.retry_config.max_retries
+                        );
+                        tokio::time::sleep(duration).await;
+                        attempt += 1;
+                        continue;
+                    }
+                    RetryDecision::Fail(msg) => {
+                        // Consume the response to get the body
+                        let error_text = response
+                            .text()
+                            .await
+                            .unwrap_or_else(|_| "Rate limit exceeded".to_string());
+                        anyhow::bail!("{}\nAPI Response: {}", msg, error_text);
+                    }
+                    RetryDecision::Success => {
+                        // This shouldn't happen for 429, but handle it anyway
+                    }
+                }
+            }
+            
+            // Handle the response normally
+            return self.handle_response(response).await;
         }
-
-        if let Some(b) = body {
-            request = request.json(&b);
-        }
-
-        let response = request.send().await.context("Request failed")?;
-        
-        self.handle_response(response).await
     }
 
     /// Handle API response
@@ -203,7 +249,7 @@ impl Default for QueryBuilder {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use httpmock::Method::{DELETE, GET};
+    use httpmock::Method::{DELETE, GET, POST};
     use httpmock::MockServer;
     use serde_json::json;
     use std::collections::HashMap;
@@ -306,6 +352,107 @@ mod tests {
         let err = client.get("bad", None).await.unwrap_err();
         assert!(err.to_string().contains("API Error"));
         mock.assert_async().await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn client_retries_on_rate_limit_with_retry_after() -> Result<()> {
+        let server = MockServer::start_async().await;
+        
+        // Test that retry logic respects Retry-After header by verifying retries happen
+        let mock = server
+            .mock_async(|when, then| {
+                when.method(GET)
+                    .path("/v2/rate-limited")
+                    .header("Authorization", "Bearer test-access");
+                then.status(429)
+                    .header("Retry-After", "1")
+                    .body("Rate limit exceeded");
+            })
+            .await;
+
+        let retry_config = RetryConfig {
+            max_retries: 2,
+            initial_backoff_secs: 1,
+            max_backoff_secs: 60,
+            exponential_backoff: true,
+        };
+
+        let client = FreeAgentClient::new_for_test(server.url("/v2"), test_tokens())?
+            .with_retry_config(retry_config);
+        
+        // This should fail after retries
+        let err = client.get("rate-limited", None).await.unwrap_err();
+        assert!(err.to_string().contains("Rate limit exceeded"));
+        assert!(err.to_string().contains("Maximum retry attempts"));
+        
+        // Should have been called 3 times (initial + 2 retries)
+        mock.assert_hits_async(3).await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn client_fails_after_max_retries() -> Result<()> {
+        let server = MockServer::start_async().await;
+        
+        // Always return 429
+        let mock = server
+            .mock_async(|when, then| {
+                when.method(GET).path("/v2/always-limited");
+                then.status(429)
+                    .header("Retry-After", "1")
+                    .body("Rate limit exceeded");
+            })
+            .await;
+
+        let retry_config = RetryConfig {
+            max_retries: 2,
+            initial_backoff_secs: 1,
+            max_backoff_secs: 60,
+            exponential_backoff: true,
+        };
+
+        let client = FreeAgentClient::new_for_test(server.url("/v2"), test_tokens())?
+            .with_retry_config(retry_config);
+        
+        let err = client.get("always-limited", None).await.unwrap_err();
+        assert!(err.to_string().contains("Rate limit exceeded"));
+        assert!(err.to_string().contains("Maximum retry attempts"));
+        
+        // Should have tried 3 times (initial + 2 retries)
+        mock.assert_hits_async(3).await;
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn client_uses_exponential_backoff_without_retry_after() -> Result<()> {
+        let server = MockServer::start_async().await;
+        
+        // Test exponential backoff by ensuring retries happen
+        let mock = server
+            .mock_async(|when, then| {
+                when.method(POST)
+                    .path("/v2/backoff-test");
+                then.status(429).body("Rate limit exceeded");
+            })
+            .await;
+
+        let retry_config = RetryConfig {
+            max_retries: 2,
+            initial_backoff_secs: 1,
+            max_backoff_secs: 60,
+            exponential_backoff: true,
+        };
+
+        let client = FreeAgentClient::new_for_test(server.url("/v2"), test_tokens())?
+            .with_retry_config(retry_config);
+        
+        // This should fail after retries with exponential backoff
+        let err = client.post::<()>("backoff-test", None).await.unwrap_err();
+        assert!(err.to_string().contains("Rate limit exceeded"));
+        
+        // Should have been called 3 times (initial + 2 retries)
+        mock.assert_hits_async(3).await;
         Ok(())
     }
 }
