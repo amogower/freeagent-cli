@@ -89,8 +89,18 @@ Each GitHub Release includes:
 
 ## Release Process
 
-Releases are automated via GitHub Actions. Tag a release with the same version
-as Cargo.toml and push the tag:
+Releases are automated via GitHub Actions. Use the `prepare-release` workflow to
+bump the version, commit, and tag, then the tag pipeline publishes assets.
+
+1. In GitHub Actions, run the `prepare-release` workflow and choose `major`,
+   `minor`, or `patch`.
+2. The workflow runs `scripts/release.js`, which updates `Cargo.toml` (and
+   `Cargo.lock`), commits `chore(release): vX.Y.Z`, and pushes tag `vX.Y.Z`.
+3. The `release` workflow triggers on the tag and uploads assets to the GitHub
+   Release.
+
+If you prefer manual tagging, ensure the tag matches the version in
+`Cargo.toml` and push the tag:
 
 ```bash
 git tag v0.1.0
