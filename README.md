@@ -24,7 +24,7 @@ curl -fsSL https://raw.githubusercontent.com/amogower/freeagent-cli/main/scripts
 Install a specific version:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/amogower/freeagent-cli/main/scripts/install.sh | bash -s -- 1.0.0
+curl -fsSL https://raw.githubusercontent.com/amogower/freeagent-cli/main/scripts/install.sh | bash -s -- 0.1.0
 ```
 
 Use a fork or custom install directory:
@@ -44,11 +44,11 @@ To publish via Homebrew, create a tap repo and copy the formula there after each
 Download the `.deb` or `.rpm` asset from the GitHub Releases page and install with:
 
 ```bash
-sudo dpkg -i freeagent_1.0.0_amd64.deb
+sudo dpkg -i freeagent_0.1.0_amd64.deb
 ```
 
 ```bash
-sudo rpm -i freeagent-1.0.0-1.x86_64.rpm
+sudo rpm -i freeagent-0.1.0-1.x86_64.rpm
 ```
 
 ### macOS Installer (.pkg)
@@ -56,7 +56,7 @@ sudo rpm -i freeagent-1.0.0-1.x86_64.rpm
 Download the `.pkg` asset from the GitHub Releases page and install with:
 
 ```bash
-sudo installer -pkg freeagent-1.0.0-aarch64-apple-darwin.pkg -target /
+sudo installer -pkg freeagent-0.1.0-aarch64-apple-darwin.pkg -target /
 ```
 
 ### From Source
@@ -89,11 +89,12 @@ Each GitHub Release includes:
 
 ## Release Process
 
-Releases are automated via GitHub Actions. Tag a release and push the tag:
+Releases are automated via GitHub Actions. Tag a release with the same version
+as Cargo.toml and push the tag:
 
 ```bash
-git tag v1.0.0
-git push origin v1.0.0
+git tag v0.1.0
+git push origin v0.1.0
 ```
 
 The workflow builds all targets, packages assets, generates `SHA256SUMS`, and produces

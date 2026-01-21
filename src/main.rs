@@ -38,7 +38,7 @@ use output::OutputFormat;
 #[derive(Parser)]
 #[command(name = "freeagent")]
 #[command(author = "FreeAgent CLI")]
-#[command(version = "1.0.0")]
+#[command(version = env!("CARGO_PKG_VERSION"))]
 #[command(about = "A comprehensive command-line interface for the FreeAgent API", long_about = None)]
 #[command(propagate_version = true)]
 struct Cli {
