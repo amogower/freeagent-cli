@@ -14,6 +14,7 @@ pub mod estimates;
 pub mod recurring;
 pub mod bank_accounts;
 pub mod bank_transactions;
+pub mod bank_transaction_explanations;
 pub mod timeslips;
 pub mod categories;
 pub mod accounting;

@@ -3,7 +3,7 @@
 //! This CLI provides access to all FreeAgent API endpoints including:
 //! - Invoices, Bills, Expenses, Credit Notes
 //! - Contacts, Projects, Tasks, Timeslips
-//! - Bank Accounts, Bank Transactions
+//! - Bank Accounts, Bank Transactions, Bank Transfers
 //! - Accounting Reports (Balance Sheet, P&L, Trial Balance)
 //! - VAT Returns
 //! - And much more...
@@ -129,6 +129,10 @@ enum Commands {
     #[command(subcommand)]
     BankTransactions(bank_transactions::BankTransactionCommands),
     
+    /// Bank transaction explanation management (categorize transactions, transfers, etc.)
+    #[command(subcommand)]
+    BankTransactionExplanations(bank_transaction_explanations::BankTransactionExplanationCommands),
+    
     /// Timeslip management
     #[command(subcommand)]
     Timeslips(timeslips::TimeslipCommands),
@@ -205,6 +209,7 @@ async fn main() -> Result<()> {
                 Commands::RecurringInvoices(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::BankAccounts(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::BankTransactions(cmd) => cmd.execute(&client, cli.format).await?,
+                Commands::BankTransactionExplanations(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::Timeslips(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::Categories(cmd) => cmd.execute(&client, cli.format).await?,
                 Commands::Accounting(cmd) => cmd.execute(&client, cli.format).await?,

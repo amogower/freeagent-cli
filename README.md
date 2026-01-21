@@ -4,7 +4,7 @@ A comprehensive command-line interface for the FreeAgent accounting API, written
 
 ## Features
 
-- **Complete API Coverage**: All FreeAgent API endpoints including invoices, bills, expenses, contacts, projects, bank accounts, accounting reports, VAT returns, and more
+- **Complete API Coverage**: All FreeAgent API endpoints including invoices, bills, expenses, contacts, projects, bank accounts, bank transfers, accounting reports, VAT returns, and more
 - **OAuth2 Authentication**: Full OAuth2 flow with PKCE for enhanced security
 - **Automatic Token Refresh**: Tokens are automatically refreshed when expired
 - **Secure Token Storage**: Tokens stored in platform-specific config directory
@@ -286,6 +286,33 @@ freeagent bank-transactions create \
   --dated-on "2024-01-15" \
   --amount "100.00" \
   --description "Client payment"
+
+# Transfer money between accounts (convenience command)
+freeagent bank-transaction-explanations transfer \
+  --from-account "https://api.freeagent.com/v2/bank_accounts/123" \
+  --to-account "https://api.freeagent.com/v2/bank_accounts/456" \
+  --amount "500.00" \
+  --dated-on "2024-01-15" \
+  --description "Transfer to savings"
+
+# List transaction explanations
+freeagent bank-transaction-explanations list \
+  --bank-account "https://api.freeagent.com/v2/bank_accounts/123"
+
+# Create an explanation (categorize a transaction)
+freeagent bank-transaction-explanations create \
+  --bank-transaction "https://api.freeagent.com/v2/bank_transactions/789" \
+  --dated-on "2024-01-15" \
+  --gross-value "100.00" \
+  --category "https://api.freeagent.com/v2/categories/285" \
+  --description "Office supplies"
+
+# Explain an invoice payment
+freeagent bank-transaction-explanations create \
+  --bank-transaction "https://api.freeagent.com/v2/bank_transactions/789" \
+  --dated-on "2024-01-15" \
+  --gross-value "1000.00" \
+  --paid-invoice "https://api.freeagent.com/v2/invoices/123"
 ```
 
 ### Accounting Reports
@@ -360,6 +387,7 @@ freeagent --sandbox invoices list
 | `recurring-invoices` | Recurring invoice management |
 | `bank-accounts` | Bank account management |
 | `bank-transactions` | Bank transaction management |
+| `bank-transaction-explanations` | Transaction categorization, transfers, invoice/bill payments |
 | `timeslips` | Time tracking |
 | `categories` | Category listing |
 | `accounting` | Accounting reports |
