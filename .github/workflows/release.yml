@@ -4,14 +4,50 @@ on:
   push:
     tags:
       - "v*"
+  workflow_run:
+    workflows:
+      - prepare-release
+    types:
+      - completed
 
 permissions:
   contents: write
 
 jobs:
+  resolve:
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.resolve.outputs.tag_name }}
+      version: ${{ steps.resolve.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Resolve release tag
+        id: resolve
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            git fetch --tags --force
+            TAG_NAME=$(git tag --points-at "${{ github.event.workflow_run.head_sha }}" --list 'v*' --sort=-creatordate | head -n 1)
+          else
+            TAG_NAME="${GITHUB_REF_NAME}"
+          fi
+          if [ -z "$TAG_NAME" ]; then
+            echo "No release tag found for commit ${{ github.event.workflow_run.head_sha }}" >&2
+            exit 1
+          fi
+          echo "tag_name=$TAG_NAME" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
+
   build:
     name: build (${{ matrix.target }})
     runs-on: ${{ matrix.os }}
+    needs: resolve
+    if: needs.resolve.result == 'success'
+    env:
+      TAG_NAME: ${{ needs.resolve.outputs.tag_name }}
+      VERSION: ${{ needs.resolve.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
@@ -35,10 +71,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.resolve.outputs.tag_name }}
 
       - name: Verify tag matches Cargo.toml
         run: |
-          TAG_VERSION=${GITHUB_REF_NAME#v}
+          TAG_VERSION=$VERSION
           MANIFEST_VERSION=$(awk -F ' = ' '/^version =/ { gsub(/"/, "", $2); print $2; exit }' Cargo.toml)
           if [ "$TAG_VERSION" != "$MANIFEST_VERSION" ]; then
             echo "Tag version ($TAG_VERSION) does not match Cargo.toml ($MANIFEST_VERSION)" >&2
@@ -63,14 +102,12 @@ jobs:
 
       - name: Package tarball
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
           TARGET=${{ matrix.target }}
           SKIP_CHECKSUMS=1 ./scripts/package.sh "$VERSION" "$TARGET"
 
       - name: Build macOS pkg
         if: runner.os == 'macOS'
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
           TARGET=${{ matrix.target }}
           SKIP_CHECKSUMS=1 ./scripts/build-macos-pkg.sh "$VERSION" "$TARGET"
 
@@ -93,9 +130,16 @@ jobs:
   publish:
     name: publish release
     runs-on: ubuntu-latest
-    needs: build
+    needs: [resolve, build]
+    if: needs.resolve.result == 'success'
+    env:
+      TAG_NAME: ${{ needs.resolve.outputs.tag_name }}
+      VERSION: ${{ needs.resolve.outputs.version }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ needs.resolve.outputs.tag_name }}
 
       - name: Download artifacts
         uses: actions/download-artifact@v4
@@ -112,10 +156,10 @@ jobs:
 
       - name: Generate Homebrew formula
         run: |
-          VERSION=${GITHUB_REF_NAME#v}
           ./scripts/generate-homebrew-formula.sh "$VERSION"
 
       - name: Upload release assets
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ env.TAG_NAME }}
           files: dist/*
