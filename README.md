@@ -102,25 +102,17 @@ The workflow builds all targets, packages assets, generates `SHA256SUMS`, and pr
 
 ## Configuration
 
-### OAuth Credentials
+This CLI is configured for OAuth out of the box. If you are building
+from source and need to supply your own credentials, you can provide them
+at build time or runtime:
 
-OAuth credentials can be provided in two ways:
+```bash
+# Build-time embedding (recommended for distribution)
+FREEAGENT_CLIENT_ID="your_id" FREEAGENT_CLIENT_SECRET="your_secret" cargo build --release
 
-1. **Compile-time embedding** (recommended for distribution):
-   ```bash
-   FREEAGENT_CLIENT_ID="your_id" FREEAGENT_CLIENT_SECRET="your_secret" cargo build --release
-   ```
-
-2. **Edit the source** before building:
-   Modify `src/auth/config.rs` to include your credentials.
-
-### Getting OAuth Credentials
-
-1. Log in to your FreeAgent account
-2. Go to Settings → Developer Dashboard
-3. Create a new OAuth application
-4. Set the redirect URI to `http://localhost:8484/callback`
-5. Copy the Client ID and Client Secret
+# Runtime credentials (useful with prebuilt binaries)
+FREEAGENT_CLIENT_ID="your_id" FREEAGENT_CLIENT_SECRET="your_secret" freeagent login
+```
 
 ## Usage
 

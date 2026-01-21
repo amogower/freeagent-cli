@@ -12,10 +12,11 @@ use oauth2::{
 
 
 
+use std::net::TcpListener;
 use tiny_http::{Response, Server};
 use url::Url;
 
-use super::config::{self, CLIENT_ID, CLIENT_SECRET};
+use super::config;
 use super::token::{StoredTokens, TokenStorage};
 
 /// OAuth2 authentication manager
@@ -34,27 +35,64 @@ impl OAuthManager {
     }
 
     /// Create the OAuth2 client
-    fn create_client(&self) -> Result<BasicClient> {
-        let client = BasicClient::new(
-            ClientId::new(CLIENT_ID.to_string()),
-            Some(ClientSecret::new(CLIENT_SECRET.to_string())),
+    fn create_client(&self, redirect_uri: Option<&str>) -> Result<BasicClient> {
+        let client_id = config::client_id()?;
+        let client_secret = config::client_secret()?;
+        let mut client = BasicClient::new(
+            ClientId::new(client_id),
+            Some(ClientSecret::new(client_secret)),
             AuthUrl::new(config::auth_url(self.sandbox).to_string())
                 .context("Invalid auth URL")?,
             Some(TokenUrl::new(config::token_url(self.sandbox).to_string())
                 .context("Invalid token URL")?),
         )
-        .set_auth_type(AuthType::RequestBody)
-        .set_redirect_uri(
-            RedirectUrl::new(config::redirect_uri())
-                .context("Invalid redirect URL")?,
-        );
+        .set_auth_type(AuthType::RequestBody);
+
+        if let Some(uri) = redirect_uri {
+            client = client.set_redirect_uri(
+                RedirectUrl::new(uri.to_string()).context("Invalid redirect URL")?,
+            );
+        }
 
         Ok(client)
     }
 
+    /// Start local server to receive callback on an available port
+    fn start_callback_server(&self) -> Result<(Server, u16)> {
+        let mut last_err = None;
+
+        for _ in 0..10 {
+            let listener = TcpListener::bind("127.0.0.1:0")
+                .map_err(|e| anyhow!("Failed to bind callback listener: {}", e))?;
+            let port = listener
+                .local_addr()
+                .map_err(|e| anyhow!("Failed to determine callback port: {}", e))?
+                .port();
+            drop(listener);
+
+            match Server::http(format!("127.0.0.1:{}", port)) {
+                Ok(server) => return Ok((server, port)),
+                Err(err) => last_err = Some(err),
+            }
+        }
+
+        if let Some(err) = last_err {
+            Err(anyhow!(
+                "Failed to start callback server on an available port: {}",
+                err
+            ))
+        } else {
+            Err(anyhow!(
+                "Failed to start callback server on an available port"
+            ))
+        }
+    }
+
     /// Start the OAuth login flow
     pub async fn login(&self) -> Result<StoredTokens> {
-        let client = self.create_client()?;
+        let (server, callback_port) = self.start_callback_server()?;
+        let redirect_uri = config::redirect_uri(callback_port);
+        let client = self.create_client(Some(&redirect_uri))?;
 
         let use_pkce = std::env::var("FREEAGENT_OAUTH_PKCE")
             .map(|value| matches!(value.as_str(), "1" | "true" | "TRUE" | "yes" | "YES"))
@@ -84,7 +122,7 @@ impl OAuthManager {
         }
 
         // Start local server to receive callback
-        let auth_code = self.wait_for_callback(&csrf_token)?;
+        let auth_code = self.wait_for_callback(server, callback_port, &csrf_token)?;
 
         println!("Authorization code received. Exchanging for tokens...");
 
@@ -123,11 +161,16 @@ impl OAuthManager {
     }
 
     /// Wait for OAuth callback on local server
-    fn wait_for_callback(&self, expected_state: &CsrfToken) -> Result<String> {
-        let server = Server::http(format!("127.0.0.1:{}", config::CALLBACK_PORT))
-            .map_err(|e| anyhow!("Failed to start callback server: {}", e))?;
-
-        println!("Waiting for authorization callback on port {}...", config::CALLBACK_PORT);
+    fn wait_for_callback(
+        &self,
+        server: Server,
+        callback_port: u16,
+        expected_state: &CsrfToken,
+    ) -> Result<String> {
+        println!(
+            "Waiting for authorization callback on port {}...",
+            callback_port
+        );
 
         // Wait for the callback request
         let request = server
@@ -192,7 +235,7 @@ impl OAuthManager {
 
     /// Refresh the access token
     pub async fn refresh(&self, tokens: &mut StoredTokens) -> Result<()> {
-        let client = self.create_client()?;
+        let client = self.create_client(None)?;
 
         let token_result = client
             .exchange_refresh_token(&RefreshToken::new(tokens.refresh_token.clone()))
