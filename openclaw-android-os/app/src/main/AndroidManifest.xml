@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- ── Network Permissions ── -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+
+    <!-- ── Telephony Permissions ── -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
+    <uses-permission android:name="android.permission.READ_PHONE_STATE" />
+    <uses-permission android:name="android.permission.READ_PHONE_NUMBERS" />
+    <uses-permission android:name="android.permission.MANAGE_OWN_CALLS" />
+    <uses-permission android:name="android.permission.READ_CALL_LOG" />
+
+    <!-- ── Audio Permissions (for WebRTC / Voice) ── -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+    <uses-permission android:name="android.permission.BLUETOOTH" />
+    <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
+
+    <!-- ── Foreground Service ── -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_PHONE_CALL" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- ── Background / Wake ── -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+
+    <!-- ── Contacts (optional, for caller ID) ── -->
+    <uses-permission android:name="android.permission.READ_CONTACTS" />
+
+    <uses-feature android:name="android.hardware.telephony" android:required="false" />
+    <uses-feature android:name="android.hardware.microphone" android:required="true" />
+
+    <application
+        android:name=".OpenClawApplication"
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.OpenClawCallingNode"
+        android:networkSecurityConfig="@xml/network_security_config"
+        tools:targetApi="35">
+
+        <!-- ── Main Activity ── -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:launchMode="singleTop"
+            android:theme="@style/Theme.OpenClawCallingNode">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+            <!-- Deep link for openclaw:// scheme -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="openclaw" android:host="call" />
+            </intent-filter>
+        </activity>
+
+        <!-- ── Gateway Connection Service ── -->
+        <service
+            android:name=".gateway.GatewayConnectionService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall" />
+
+        <!-- ── Vapi Calling Service ── -->
+        <service
+            android:name=".service.vapi.VapiCallingService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall|microphone" />
+
+        <!-- ── WhatsApp Calling Service ── -->
+        <service
+            android:name=".service.whatsapp.WhatsAppCallingService"
+            android:exported="false"
+            android:foregroundServiceType="phoneCall|microphone" />
+
+        <!-- ── Native Telephony Service ── -->
+        <service
+            android:name=".service.telephony.NativeTelephonyService"
+            android:exported="true"
+            android:permission="android.permission.BIND_TELECOM_CONNECTION_SERVICE">
+            <intent-filter>
+                <action android:name="android.telecom.ConnectionService" />
+            </intent-filter>
+        </service>
+
+        <!-- ── Boot Receiver (auto-start gateway connection) ── -->
+        <receiver
+            android:name=".receiver.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ── Call Status Receiver ── -->
+        <receiver
+            android:name=".receiver.CallStatusReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.openclaw.callingnode.CALL_STATUS_CHANGED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ── Webhook Receiver (for WhatsApp callbacks) ── -->
+        <receiver
+            android:name=".receiver.WebhookReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="com.openclaw.callingnode.WEBHOOK_RECEIVED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- ── Meta / Provider ── -->
+        <meta-data
+            android:name="com.openclaw.callingnode.VERSION"
+            android:value="1.0.0-alpha" />
+
+    </application>
+
+</manifest>
