@@ -124,7 +124,7 @@
         <!-- ── Meta / Provider ── -->
         <meta-data
             android:name="com.openclaw.callingnode.VERSION"
-            android:value="1.0.0-alpha" />
+            android:value="2026.2.15-beta.1" />
 
     </application>
 

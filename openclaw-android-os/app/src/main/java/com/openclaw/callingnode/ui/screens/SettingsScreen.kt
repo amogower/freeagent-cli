@@ -170,7 +170,7 @@ fun SettingsScreen(
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "OpenClaw Calling Node v1.0.0-alpha",
+                            text = "OpenClaw Calling Node v2026.2.15-beta.1",
                             style = MaterialTheme.typography.bodyMedium
                         )
                         Text(

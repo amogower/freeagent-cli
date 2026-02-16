@@ -106,7 +106,7 @@ class GatewayConnectionService : Service() {
                     addHeader("Authorization", "Bearer ${config.gatewayToken}")
                 }
                 addHeader("X-Node-Type", "android-calling")
-                addHeader("X-Node-Version", "1.0.0-alpha")
+                addHeader("X-Node-Version", "2026.2.15-beta.1")
             }
             .build()
 
@@ -127,7 +127,7 @@ class GatewayConnectionService : Service() {
                         commandId = "registration",
                         type = ResponseType.PONG,
                         payload = ResponsePayload(
-                            message = "Android Calling Node v1.0.0-alpha registered"
+                            message = "Android Calling Node v2026.2.15-beta.1 registered"
                         )
                     )
                 )
